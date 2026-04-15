@@ -48,8 +48,28 @@ COMMON_GENERATED_DIR_NAMES = {
     "venv",
 }
 
+COMMON_LOCK_FILE_NAMES = {
+    ".terraform.lock.hcl",
+    "bun.lock",
+    "bun.lockb",
+    "cargo.lock",
+    "composer.lock",
+    "gemfile.lock",
+    "mix.lock",
+    "package-lock.json",
+    "pipfile.lock",
+    "pnpm-lock.yaml",
+    "poetry.lock",
+    "podfile.lock",
+    "pubspec.lock",
+    "uv.lock",
+    "yarn.lock",
+}
+
 GENERATED_PREFIXES = (".cache", ".temp", ".tmp")
 GENERATED_SUFFIXES = ("-cache", "_cache", ".cache", ".egg-info")
+LOCK_FILE_SUFFIXES = (".lock", ".lockb", ".lock.hcl")
+LOCK_FILE_PATTERNS = ("-lock.json", "-lock.yaml", "-lock.yml")
 
 
 def parse_args() -> argparse.Namespace:
@@ -253,6 +273,17 @@ def looks_generated_dir(name: str) -> bool:
     return False
 
 
+def looks_excluded_file(name: str) -> bool:
+    lowered = name.lower()
+    if lowered in COMMON_LOCK_FILE_NAMES:
+        return True
+    if lowered.endswith(LOCK_FILE_SUFFIXES):
+        return True
+    if lowered.endswith(LOCK_FILE_PATTERNS):
+        return True
+    return False
+
+
 def is_under_ignored_path(relative_path: str, ignored_dirs: set[str]) -> bool:
     parts = [part for part in relative_path.split("/") if part]
     for index in range(1, len(parts) + 1):
@@ -293,6 +324,7 @@ def build_tree_lines(root: Path, excludes: set[str], ignored_dirs: set[str]) -> 
                     child.is_dir()
                     and should_exclude_directory(child, root, excludes, ignored_dirs)
                 )
+                and not (child.is_file() and looks_excluded_file(child.name))
             ]
         except PermissionError:
             lines.append(f"{prefix}└── [permission denied]")
@@ -323,7 +355,8 @@ def commit_file_paths(repo_root: Path, commit: str) -> list[str]:
         cwd=repo_root,
     )
     paths = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-    return unique_paths(paths)
+    filtered_paths = [path for path in paths if not looks_excluded_file(Path(path).name)]
+    return unique_paths(filtered_paths)
 
 
 def file_exists_in_commit(repo_root: Path, commit: str, path: str) -> bool:
@@ -344,6 +377,10 @@ def build_commit_output(repo_root: Path, commit: str) -> str:
         f"Commit: {resolved_commit}",
         "",
     ]
+
+    if not paths:
+        sections.append("[No committed files matched after excluding lock files.]")
+        sections.append("")
 
     for path in paths:
         sections.append(f"===== FILE: {path} =====")
@@ -378,6 +415,7 @@ def diagnose(root: Path, excludes: set[str], commit: str) -> str:
             f"shell={detect_shell()}",
             f"commit={commit}",
             f"excludes={','.join(sorted(excludes))}",
+            "excluded_lock_files=enabled",
             f"git_ignored_directories={len(ignored_dirs)}",
             f"clipboard_backends={','.join(available_backends) if available_backends else 'none'}",
             "",

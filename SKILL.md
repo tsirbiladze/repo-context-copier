@@ -9,8 +9,8 @@ description: Use when the user wants to copy a filtered repository tree to the c
 
 Use this skill to export repo context without rewriting ad-hoc shell commands. It provides three clipboard-first exports from the current checkout or a chosen repo path:
 
-- a repository tree that excludes common dependency, build, cache, temp, and artifact folders, plus directories already ignored by Git
-- the full committed contents of files touched in a commit snapshot, defaulting to `HEAD`
+- a repository tree that excludes common dependency, build, cache, temp, artifact, and lock-file noise, plus directories already ignored by Git
+- the full committed contents of files touched in a commit snapshot, defaulting to `HEAD`, with common lock files filtered out
 - a combined bundle that includes both the tree and the commit snapshot
 
 ## When to Use
@@ -47,7 +47,7 @@ Each command copies to the system clipboard by default.
    - Windows: prefer `clip`, fall back to PowerShell clipboard commands
    - macOS: use `pbcopy`
    - Linux and WSL: try `wl-copy`, `xclip`, `xsel`, then `clip.exe` when available
-3. Build the tree using both generic generated-folder heuristics and Git ignore rules, so the output stays focused on useful repo context instead of framework-specific caches.
+3. Build the tree using generic generated-folder heuristics, lock-file filtering, and Git ignore rules, so the output stays focused on useful repo context instead of cache or dependency noise.
 4. Generate the requested export.
 5. Copy it to the clipboard unless `--stdout` is set.
 
