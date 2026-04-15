@@ -1,0 +1,4 @@
+interface:
+  display_name: "Copy Repo Context"
+  short_description: "Copy repo tree and commit files to clipboard"
+  default_prompt: "Use $copy-repo-context to copy a filtered repo tree and the full files from the last commit to the clipboard."
